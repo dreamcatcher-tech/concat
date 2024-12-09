@@ -45,7 +45,7 @@ Permissions:
 ## Installing as a single CLI command:
 
 ```sh
-deno install --global --allow-read --allow-write jsr:@artifact/concat
+deno install --global --allow-read --allow-write jsr:@dreamcatcher/concat
 ```
 
 After this, `concat` will be available as a system-wide command.

@@ -1,5 +1,5 @@
 {
-  "name": "@artifact/concat",
+  "name": "@dreamcatcher/concat",
   "version": "0.0.1",
   "tasks": {
     "run": "deno run --allow-read --allow-write main.ts"
