@@ -1,7 +1,7 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write
-import { expandGlob } from "jsr:@std/fs";
-import type {  Writer } from "jsr:@std/io";
-import { relative } from "jsr:@std/path";
+import { expandGlob } from "@std/fs";
+import type {  Writer } from "@std/io";
+import { relative } from "@std/path";
 
 async function printHelp(): Promise<void> {
   console.log(`Usage:
