@@ -1,6 +1,6 @@
 {
   "name": "@dreamcatcher/concat",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "tasks": {
     "run": "deno run --allow-read --allow-write main.ts"
   },

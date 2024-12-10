@@ -3,10 +3,13 @@ import { expandGlob } from "@std/fs";
 import type { Writer } from "@std/io";
 import { relative } from "@std/path";
 import { encode } from "gpt-tokenizer/model/o1-preview";
-import humanize from "humanize-number"; // Import the humanize-number package
+import humanize from "humanize-number";
+import denoData from "./deno.json" with { type: "json" };
 
 const printHelp = async (): Promise<void> => {
-  console.log(`Usage:
+  console.log(`concat v${denoData.version}
+
+Usage:
   concat [options] [file|folder|glob ...]
 
 Options:
@@ -65,11 +68,14 @@ const main = async () => {
   }
 
   const enc = new TextEncoder();
+  const processedFiles: string[] = [];
+
   for (const pattern of expandedPatterns) {
-    for await (const file of expandGlob(pattern)) {
+    for await (const file of expandGlob(pattern, { globstar: true })) {
       if (file.isFile) {
         const data = await Deno.readTextFile(file.path);
         const relativePath = relative(Deno.cwd(), file.path);
+        processedFiles.push(relativePath);
         await out.write(enc.encode(
           `-----BEGIN FILE ${relativePath}-----\n${data}\n-----END FILE ${relativePath}-----\n`
         ));
@@ -79,9 +85,22 @@ const main = async () => {
 
   if (outputFile) {
     out.close();
+  }
+
+  // Print the processed file list
+  console.log("Processed files:");
+  for (const f of processedFiles) {
+    console.log(`- ${f}`);
+  }
+
+  // Print the count of processed files
+  console.log(`Total files processed: ${processedFiles.length}`);
+
+  // If output file was provided, print token count
+  if (outputFile) {
     const outputText = await Deno.readTextFile(outputFile);
     const tokens = await encode(outputText);
-    const formattedTokenCount = humanize(tokens.length); // Format with thousands separator
+    const formattedTokenCount = humanize(tokens.length);
     console.log(`✅ Operation complete! Wrote to ${outputFile} with ${formattedTokenCount} o1 tokens. 🎉`);
   }
 };
