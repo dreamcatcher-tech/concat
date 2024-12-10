@@ -7,7 +7,9 @@
     "jsr:@std/io@0.225": "0.225.0",
     "jsr:@std/path@*": "1.0.8",
     "jsr:@std/path@^1.0.7": "1.0.8",
-    "jsr:@std/path@^1.0.8": "1.0.8"
+    "jsr:@std/path@^1.0.8": "1.0.8",
+    "npm:gpt-tokenizer@^2.8.1": "2.8.1",
+    "npm:humanize-number@^0.0.2": "0.0.2"
   },
   "jsr": {
     "@std/bytes@1.0.4": {
@@ -35,11 +37,21 @@
       "integrity": "548fa456bb6a04d3c1a1e7477986b6cffbce95102d0bb447c67c4ee70e0364be"
     }
   },
+  "npm": {
+    "gpt-tokenizer@2.8.1": {
+      "integrity": "sha512-8+a9ojzqfgiF3TK4oivGYjlycD8g5igLt8NQw3ndOIgLVKSGJDhUDNAfYSbtyyuTkha3R/R9F8XrwC7/B5TKfQ=="
+    },
+    "humanize-number@0.0.2": {
+      "integrity": "sha512-un3ZAcNQGI7RzaWGZzQDH47HETM4Wrj6z6E4TId8Yeq9w5ZKUVB1nrT2jwFheTUjEmqcgTjXDc959jum+ai1kQ=="
+    }
+  },
   "workspace": {
     "dependencies": [
       "jsr:@std/fs@^1.0.6",
       "jsr:@std/io@0.225",
-      "jsr:@std/path@^1.0.8"
+      "jsr:@std/path@^1.0.8",
+      "npm:gpt-tokenizer@^2.8.1",
+      "npm:humanize-number@^0.0.2"
     ]
   }
 }

@@ -13,6 +13,8 @@
   "imports": {
     "@std/fs": "jsr:@std/fs@^1.0.6",
     "@std/io": "jsr:@std/io@^0.225.0",
-    "@std/path": "jsr:@std/path@^1.0.8"
+    "@std/path": "jsr:@std/path@^1.0.8",
+    "gpt-tokenizer": "npm:gpt-tokenizer@^2.8.1",
+    "humanize-number": "npm:humanize-number@^0.0.2"
   }
 }

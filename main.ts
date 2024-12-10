@@ -1,9 +1,10 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write
 import { expandGlob } from "@std/fs";
-import type {  Writer } from "@std/io";
+import type { Writer } from "@std/io";
 import { relative } from "@std/path";
+import { encode } from "gpt-tokenizer/model/o1-preview";
 
-async function printHelp(): Promise<void> {
+const printHelp = async (): Promise<void> => {
   console.log(`Usage:
   concat [options] [file|folder|glob ...]
 
@@ -14,9 +15,9 @@ Options:
 If no --output is provided, output is written to stdout.
 If directories are provided, their contents are included recursively.
 Glob patterns are expanded to include matched files recursively.`);
-}
+};
 
-async function main() {
+const main = async () => {
   const args = [...Deno.args];
   if (!args.length || args.includes("--help")) {
     await printHelp();
@@ -24,9 +25,8 @@ async function main() {
   }
 
   let outputFile: string | undefined;
-  let outputFileIndex = args.indexOf("--output");
+  const outputFileIndex = args.indexOf("--output");
   if (outputFileIndex !== -1) {
-    // Check if an output file is specified after --output
     if (args.length <= outputFileIndex + 1) {
       console.error("Error: --output specified but no file provided.");
       Deno.exit(1);
@@ -35,7 +35,6 @@ async function main() {
     args.splice(outputFileIndex, 2);
   }
 
-  // The remaining args are patterns
   const patternsRaw = args;
   if (!Array.isArray(patternsRaw)) {
     console.error("Error: Patterns must be strings.");
@@ -43,7 +42,6 @@ async function main() {
   }
   const patterns = [...patternsRaw] as const;
 
-  // Convert directories into glob patterns
   const expandedPatterns: string[] = [];
   for (const pat of patterns) {
     try {
@@ -54,7 +52,6 @@ async function main() {
         expandedPatterns.push(pat);
       }
     } catch {
-      // If stat fails, treat as a pattern anyway
       expandedPatterns.push(pat);
     }
   }
@@ -79,7 +76,12 @@ async function main() {
     }
   }
 
-  if (outputFile) out.close();
-}
+  if (outputFile) {
+    out.close();
+    const outputText = await Deno.readTextFile(outputFile);
+    const tokens = await encode(outputText);
+    console.log(`✅ Operation complete! Wrote to ${outputFile} with ${tokens.length} o1 tokens. 🎉`);
+  }
+};
 
 main();

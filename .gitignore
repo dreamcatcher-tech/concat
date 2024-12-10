@@ -1,0 +1,25 @@
+# Deno
+.deno/
+deno.lock
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build output
+dist/
+out/
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.*
+
+dump.md
