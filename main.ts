@@ -3,6 +3,7 @@ import { expandGlob } from "@std/fs";
 import type { Writer } from "@std/io";
 import { relative } from "@std/path";
 import { encode } from "gpt-tokenizer/model/o1-preview";
+import humanize from "humanize-number"; // Import the humanize-number package
 
 const printHelp = async (): Promise<void> => {
   console.log(`Usage:
@@ -80,7 +81,8 @@ const main = async () => {
     out.close();
     const outputText = await Deno.readTextFile(outputFile);
     const tokens = await encode(outputText);
-    console.log(`✅ Operation complete! Wrote to ${outputFile} with ${tokens.length} o1 tokens. 🎉`);
+    const formattedTokenCount = humanize(tokens.length); // Format with thousands separator
+    console.log(`✅ Operation complete! Wrote to ${outputFile} with ${formattedTokenCount} o1 tokens. 🎉`);
   }
 };
 
