@@ -22,4 +22,4 @@ out/
 .env
 .env.*
 
-dump.md
+concat.txt

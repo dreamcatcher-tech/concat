@@ -1,7 +1,7 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write
 import { expandGlob } from "@std/fs";
 import type { Writer } from "@std/io";
-import { relative } from "@std/path";
+import { relative, globToRegExp } from "@std/path";
 import { encode } from "gpt-tokenizer/model/o1-preview";
 import humanize from "humanize-number";
 import denoData from "./deno.json" with { type: "json" };
@@ -10,98 +10,141 @@ const printHelp = async (): Promise<void> => {
   console.log(`concat v${denoData.version}
 
 Usage:
-  concat [options] [file|folder|glob ...]
+  concat [options] [glob ...]
 
 Options:
-  --help        Show this help message and exit.
-  --output FILE Write output to FILE instead of stdout.
+  --help          Show this help message and exit.
+  --output FILE   Write output to FILE (default: concat.txt if not using --stdout).
+  --stdout        Write output to stdout only, no info messages.
+  --ignore GLOB   Add a glob to ignore. Can be used multiple times.
 
-If no --output is provided, output is written to stdout.
-If directories are provided, their contents are included recursively.
-Glob patterns are expanded to include matched files recursively.`);
+If no arguments are provided, it's equivalent to "." which is equivalent to "**/*".
+This means all files are included by default, except those ignored.
+
+By default, these are ignored:
+  .lock, .git, .git/**, .gitignore, LICENSE, concat.txt
+
+Additional ignores can be specified via --ignore.
+`);
 };
 
 const main = async () => {
   const args = [...Deno.args];
-  if (!args.length || args.includes("--help")) {
+  if (args.includes("--help")) {
     await printHelp();
     Deno.exit(0);
   }
 
   let outputFile: string | undefined;
-  const outputFileIndex = args.indexOf("--output");
-  if (outputFileIndex !== -1) {
-    if (args.length <= outputFileIndex + 1) {
-      console.error("Error: --output specified but no file provided.");
-      Deno.exit(1);
-    }
-    outputFile = args[outputFileIndex + 1];
-    args.splice(outputFileIndex, 2);
-  }
+  let toStdout = false;
+  const ignoreGlobs: string[] = [];
 
-  const patternsRaw = args;
-  if (!Array.isArray(patternsRaw)) {
-    console.error("Error: Patterns must be strings.");
-    Deno.exit(1);
-  }
-  const patterns = [...patternsRaw] as const;
-
-  const expandedPatterns: string[] = [];
-  for (const pat of patterns) {
-    try {
-      const stat = await Deno.stat(pat);
-      if (stat.isDirectory) {
-        expandedPatterns.push(`${pat}/**/*`);
-      } else {
-        expandedPatterns.push(pat);
+  // Parse arguments
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === "--output") {
+      if (i + 1 >= args.length) {
+        console.error("Error: --output specified but no file provided.");
+        Deno.exit(1);
       }
-    } catch {
-      expandedPatterns.push(pat);
+      outputFile = args[i + 1];
+      args.splice(i, 2);
+      i--;
+    } else if (a === "--stdout") {
+      toStdout = true;
+      args.splice(i, 1);
+      i--;
+    } else if (a === "--ignore") {
+      if (i + 1 >= args.length) {
+        console.error("Error: --ignore specified but no glob provided.");
+        Deno.exit(1);
+      }
+      ignoreGlobs.push(args[i + 1]);
+      args.splice(i, 2);
+      i -= 2;
     }
   }
 
-  let out: Writer & { close(): void };
-  if (outputFile) {
-    out = await Deno.open(outputFile, { write: true, create: true, truncate: true });
+  // Determine patterns
+  // If no arguments given, same as "." which is same as "**/*"
+  let patterns: string[] = [];
+  if (args.length === 0) {
+    patterns = ["**/*"];
+  } else if (args.length === 1 && args[0] === ".") {
+    patterns = ["**/*"];
   } else {
+    patterns = args;
+  }
+
+  // If no output file and not stdout, default to concat.txt
+  if (!outputFile && !toStdout) {
+    outputFile = "concat.txt";
+  }
+
+  const defaultIgnores = [
+    "*.lock",
+    ".git",
+    ".git/**",
+    ".gitignore",
+    "LICENSE",
+    "concat.txt",
+  ];
+  const allIgnoredGlobs = [...defaultIgnores, ...ignoreGlobs].map(g => globToRegExp(g, { globstar: true }));
+
+  // Check if output file existed before
+  let fileExistedBefore = false;
+  if (outputFile && !toStdout) {
+    try {
+      await Deno.stat(outputFile);
+      fileExistedBefore = true;
+    } catch {
+      fileExistedBefore = false;
+    }
+  }
+
+  let out: Writer & { close?: () => void };
+  if (toStdout) {
     out = Deno.stdout;
+  } else {
+    out = await Deno.open(outputFile as string, { write: true, create: true, truncate: true });
   }
 
   const enc = new TextEncoder();
   const processedFiles: string[] = [];
 
-  for (const pattern of expandedPatterns) {
+  for (const pattern of patterns) {
     for await (const file of expandGlob(pattern, { globstar: true })) {
-      if (file.isFile) {
-        const data = await Deno.readTextFile(file.path);
-        const relativePath = relative(Deno.cwd(), file.path);
-        processedFiles.push(relativePath);
-        await out.write(enc.encode(
-          `-----BEGIN FILE ${relativePath}-----\n${data}\n-----END FILE ${relativePath}-----\n`
-        ));
-      }
+      if (!file.isFile) continue;
+
+      const rel = relative(Deno.cwd(), file.path);
+      // Check ignores
+      const ignored = allIgnoredGlobs.some((re) => re.test(rel));
+      if (ignored) continue;
+
+      const data = await Deno.readTextFile(file.path);
+      processedFiles.push(rel);
+      await out.write(enc.encode(`-----BEGIN FILE ${rel}-----\n${data}\n-----END FILE ${rel}-----\n`));
     }
   }
 
-  if (outputFile) {
-    out.close();
+  if (out.close) out.close();
+
+  if (toStdout) {
+    return;
   }
 
-  // Print the processed file list
   console.log("Processed files:");
   for (const f of processedFiles) {
     console.log(`- ${f}`);
   }
-
-  // Print the count of processed files
   console.log(`Total files processed: ${processedFiles.length}`);
 
-  // If output file was provided, print token count
   if (outputFile) {
     const outputText = await Deno.readTextFile(outputFile);
     const tokens = await encode(outputText);
     const formattedTokenCount = humanize(tokens.length);
-    console.log(`✅ Operation complete! Wrote to ${outputFile} with ${formattedTokenCount} o1 tokens. 🎉`);
+    const fileStatus = fileExistedBefore ? "updated" : "created";
+    console.log(`✅ Operation complete! ${fileStatus} ${outputFile} with ${formattedTokenCount} o1 tokens. 🎉`);
   }
 };
 
