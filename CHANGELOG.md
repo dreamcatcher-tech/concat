@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.6
+
+- empty version bump to test the version check feature
+
 ## v0.0.5
 
 - Added version check feature that notifies users when a newer version is
