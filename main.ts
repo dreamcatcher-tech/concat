@@ -28,6 +28,16 @@ Additional ignores can be specified via --ignore.
 `);
 };
 
+const compareSemver = (a: string, b: string): number => {
+  const pa = a.replace(/^v/, "").split(".").map(Number);
+  const pb = b.replace(/^v/, "").split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diff = (pa[i] || 0) - (pb[i] || 0);
+    if (diff !== 0) return diff < 0 ? -1 : 1;
+  }
+  return 0;
+};
+
 const main = async () => {
   const args = [...Deno.args];
   if (args.includes("--help")) {
@@ -39,7 +49,6 @@ const main = async () => {
   let toStdout = false;
   const ignoreGlobs: string[] = [];
 
-  // Parse arguments
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === "--output") {
@@ -65,8 +74,6 @@ const main = async () => {
     }
   }
 
-  // Determine patterns
-  // If no arguments given, same as "." which is same as "**/*"
   let patterns: string[] = [];
   if (args.length === 0) {
     patterns = ["**/*"];
@@ -76,7 +83,6 @@ const main = async () => {
     patterns = args;
   }
 
-  // If no output file and not stdout, default to concat.txt
   if (!outputFile && !toStdout) {
     outputFile = "concat.txt";
   }
@@ -91,7 +97,6 @@ const main = async () => {
   ];
   const allIgnoredGlobs = [...defaultIgnores, ...ignoreGlobs].map(g => globToRegExp(g, { globstar: true }));
 
-  // Check if output file existed before
   let fileExistedBefore = false;
   if (outputFile && !toStdout) {
     try {
@@ -115,12 +120,9 @@ const main = async () => {
   for (const pattern of patterns) {
     for await (const file of expandGlob(pattern, { globstar: true })) {
       if (!file.isFile) continue;
-
       const rel = relative(Deno.cwd(), file.path);
-      // Check ignores
       const ignored = allIgnoredGlobs.some((re) => re.test(rel));
       if (ignored) continue;
-
       const data = await Deno.readTextFile(file.path);
       processedFiles.push(rel);
       await out.write(enc.encode(`-----BEGIN FILE ${rel}-----\n${data}\n-----END FILE ${rel}-----\n`));
@@ -129,9 +131,7 @@ const main = async () => {
 
   if (out.close) out.close();
 
-  if (toStdout) {
-    return;
-  }
+  if (toStdout) return;
 
   console.log("Processed files:");
   for (const f of processedFiles) {
@@ -145,6 +145,28 @@ const main = async () => {
     const formattedTokenCount = humanize(tokens.length);
     const fileStatus = fileExistedBefore ? "updated" : "created";
     console.log(`✅ Operation complete! ${fileStatus} ${outputFile} with ${formattedTokenCount} o1 tokens. 🎉`);
+  }
+
+  // Check for newer version
+  const currentVersion = `v${denoData.version}`;
+  try {
+    const metaRes = await fetch("https://jsr.io/@dreamcatcher/concat/meta.json", {
+      headers: { "Accept": "application/json" },
+    });
+    if (metaRes.ok) {
+      const meta = await metaRes.json();
+      const availableVersions = Object.keys(meta.versions).filter((v) => !meta.versions[v].yanked);
+      const latest = availableVersions.sort((a, b) => compareSemver(a, b))[availableVersions.length - 1];
+      if (compareSemver(latest, currentVersion) > 0) {
+        console.log(`
+A newer version (${latest}) is available. Run the following to upgrade:
+
+deno install --global --reload --force --allow-read --allow-write --allow-net=jsr.io jsr:@dreamcatcher/concat@${latest}
+`);
+      }
+    }
+  } catch {
+    // ignore errors
   }
 };
 

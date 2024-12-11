@@ -1,8 +1,8 @@
 {
   "name": "@dreamcatcher/concat",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "tasks": {
-    "run": "deno run --allow-read --allow-write main.ts"
+    "run": "deno run --allow-read --allow-write --allow-net=jsr.io main.ts"
   },
   "bin": {
     "concat": "main.ts"

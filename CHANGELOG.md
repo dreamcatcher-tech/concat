@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v0.0.5
+
+- Added version check feature that notifies users when a newer version is
+  available on JSR.
+
 ## v0.0.4
 
 - Changed default behavior to write output to `concat.txt` if `--output` is not

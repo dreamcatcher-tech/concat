@@ -64,13 +64,16 @@ After running the second example, you'll see output like:
 ## Installing as a CLI command
 
 ```sh
-deno install --global --allow-read --allow-write jsr:@dreamcatcher/concat
+deno install --global --allow-read --allow-write --allow-net=jsr.io jsr:@dreamcatcher/concat
 ```
 
 After this, `concat` will be available as a system-wide command.
 
+> Note: The `--allow-net` permission is required to check for package updates
+> from the jsr.io registry.
+
 ## Upgrading the CLI command
 
 ```sh
-deno install --global --reload --force --allow-read --allow-write jsr:@dreamcatcher/concat
+deno install --global --reload --force --allow-read --allow-write --allow-net=jsr.io jsr:@dreamcatcher/concat
 ```
